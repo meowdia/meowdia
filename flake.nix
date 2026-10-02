@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT OR Apache-2.0
 
 {
-  description = "JFU";
+  description = "Meowdia";
 
   inputs = {
     crane.url = "github:ipetkov/crane";
@@ -52,7 +52,7 @@
           commonArgs
           // {
             cargoExtraArgs = "--workspace";
-            pname = "jfu";
+            pname = "meowdia";
           }
         );
 
@@ -62,7 +62,7 @@
           }
         );
 
-        jfuClippy = craneLib.cargoClippy (
+        meowdiaClippy = craneLib.cargoClippy (
           commonArgs
           // {
             CARGO_PROFILE = "dev";
@@ -71,9 +71,9 @@
           }
         );
 
-        jfuFmt = craneLib.cargoFmt commonArgs;
+        meowdiaFmt = craneLib.cargoFmt commonArgs;
 
-        jfuTest = craneLib.cargoTest (
+        meowdiaTest = craneLib.cargoTest (
           commonArgs
           // {
             CARGO_PROFILE = "dev";
@@ -81,7 +81,7 @@
           }
         );
 
-        jfu = craneLib.buildPackage (
+        meowdia = craneLib.buildPackage (
           commonArgs
           // {
             inherit cargoArtifacts;
@@ -118,13 +118,13 @@
       in
       {
         checks = {
-          clippy = jfuClippy;
-          test = jfuTest;
-          fmt = jfuFmt;
+          clippy = meowdiaClippy;
+          test = meowdiaTest;
+          fmt = meowdiaFmt;
           c-lint = cLint;
           c-test = cTest;
           reuse =
-            pkgs.runCommand "jfu-reuse"
+            pkgs.runCommand "meowdia-reuse"
               {
                 src = ./.;
                 nativeBuildInputs = [ pkgs.reuse ];
@@ -137,10 +137,10 @@
         };
 
         packages = {
-          default = jfu;
-          ci_fmt = jfuFmt;
-          ci_clippy = jfuClippy;
-          ci_test = jfuTest;
+          default = meowdia;
+          ci_fmt = meowdiaFmt;
+          ci_clippy = meowdiaClippy;
+          ci_test = meowdiaTest;
           ci_c_lint = cLint;
           ci_c_test = cTest;
         };
