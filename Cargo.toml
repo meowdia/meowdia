@@ -5,6 +5,8 @@
 name = "meowdia"
 version = "0.1.0"
 edition = "2024"
+description = "A work-in-progress media server"
+license = "MIT OR Apache-2.0"
 
 [dependencies]
 
