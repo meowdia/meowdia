@@ -29,14 +29,13 @@
           inherit system;
           overlays = [ fenix.overlays.default ];
         };
-        craneLib = (crane.mkLib pkgs).overrideToolchain (
-          pkgs.fenix.stable.withComponents [
-            "cargo"
-            "rustc"
-            "rustfmt"
-            "clippy"
-          ]
-        );
+        rustToolchain = pkgs.fenix.stable.withComponents [
+          "cargo"
+          "rustc"
+          "rustfmt"
+          "clippy"
+        ];
+        craneLib = (crane.mkLib pkgs).overrideToolchain rustToolchain;
 
         commonArgs = {
           src = pkgs.lib.fileset.toSource {
@@ -87,33 +86,49 @@
             inherit cargoArtifacts;
           }
         );
-        cExampleArgs = {
-          src = pkgs.lib.fileset.toSource {
-            root = ./.;
-            fileset = pkgs.lib.fileset.unions [
-              ./.clang-format
-              ./.clang-tidy
-              ./examples/c
-            ];
-          };
-          nativeBuildInputs = [
-            pkgs.llvmPackages_21.clang-tools
-            pkgs.llvmPackages_21.clang
-            pkgs.gcc
-            pkgs.gnumake
+
+        cSdkSupported = pkgs.stdenv.hostPlatform.isLinux && pkgs.stdenv.hostPlatform.is64bit;
+
+        cSource = pkgs.lib.fileset.toSource {
+          root = ./.;
+          fileset = pkgs.lib.fileset.unions [
+            ./Makefile
+            ./.clang-format
+            ./.clang-tidy
+            ./include
+            ./sdk/c
+            ./tests/abi/c
+            ./LICENSES
           ];
         };
 
-        cLint = pkgs.runCommand "jiffly-c-lint" cExampleArgs ''
-          make -C "$src/examples/c" lint
-          touch "$out"
-        '';
+        mkCSdk = { clang ? false, sanitize ? false, lint ? false }:
+          let
+            compiler = if clang then pkgs.llvmPackages_21.clang else pkgs.gcc;
+          in
+          pkgs.stdenv.mkDerivation {
+            pname = "meow-c-sdk";
+            version = "0.1.0";
+            src = cSource;
+            strictDeps = true;
+            nativeBuildInputs = pkgs.lib.optionals lint [ pkgs.llvmPackages_21.clang-tools ]
+              ++ [ pkgs.gnumake compiler ];
+            makeFlags = [
+              "CC=${compiler}/bin/${if clang then "clang" else "gcc"}"
+              "PREFIX=$(out)"
+              "SANITIZE=${if sanitize then "1" else "0"}"
+            ];
+            doCheck = true;
+            checkTarget = if lint then [ "check" "lint" ] else "check";
+            meta.platforms = pkgs.lib.filter
+              (platform: (pkgs.lib.systems.elaborate platform).is64bit)
+              pkgs.lib.platforms.linux;
+          };
 
-        cTest = pkgs.runCommand "jiffly-c-test" cExampleArgs ''
-          make -C "$src/examples/c" test CC=gcc BUILD_DIR="$TMPDIR/gcc"
-          make -C "$src/examples/c" test CC=clang BUILD_DIR="$TMPDIR/clang"
-          touch "$out"
-        '';
+        cSdk = mkCSdk {};
+        cClang = mkCSdk { clang = true; };
+        cSanitize = mkCSdk { clang = true; sanitize = true; };
+        cSdkLint = mkCSdk { clang = true; lint = true; };
 
       in
       {
@@ -121,8 +136,6 @@
           clippy = meowdiaClippy;
           test = meowdiaTest;
           fmt = meowdiaFmt;
-          c-lint = cLint;
-          c-test = cTest;
           reuse =
             pkgs.runCommand "meowdia-reuse"
               {
@@ -134,6 +147,11 @@
                 reuse lint
                 touch $out
               '';
+        } // pkgs.lib.optionalAttrs cSdkSupported {
+          c-sdk = cSdk;
+          c-clang = cClang;
+          c-sanitize = cSanitize;
+          c-sdk-lint = cSdkLint;
         };
 
         packages = {
@@ -141,15 +159,23 @@
           ci_fmt = meowdiaFmt;
           ci_clippy = meowdiaClippy;
           ci_test = meowdiaTest;
-          ci_c_lint = cLint;
-          ci_c_test = cTest;
+        } // pkgs.lib.optionalAttrs cSdkSupported {
+          c-sdk = cSdk;
+          ci_c_sdk_lint = cSdkLint;
+          ci_c_clang = cClang;
+          ci_c_sanitize = cSanitize;
         };
 
         devShells.default = pkgs.mkShell {
           packages = with pkgs; [
-            pkgs.fenix.stable.toolchain
+            rustToolchain
             just
             reuse
+          ] ++ pkgs.lib.optionals cSdkSupported [
+            pkgs.llvmPackages_21.clang-tools
+            pkgs.gcc
+            pkgs.llvmPackages_21.clang
+            pkgs.gnumake
           ];
         };
       }

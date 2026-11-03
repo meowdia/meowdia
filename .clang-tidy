@@ -13,5 +13,5 @@ Checks: >-
   bugprone-macro-parentheses,
   bugprone-multiple-statement-macro
 WarningsAsErrors: '*'
-HeaderFilterRegex: '.*/include/jiffly/.*'
+HeaderFilterRegex: '.*/include/meow/.*'
 FormatStyle: file

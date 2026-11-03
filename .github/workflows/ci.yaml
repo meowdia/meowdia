@@ -32,10 +32,14 @@ jobs:
             target: .#ci_test
           - id: build
             target: .#default
-          - id: c-lint
-            target: .#ci_c_lint
-          - id: c-test
-            target: .#ci_c_test
+          - id: c-sdk
+            target: .#c-sdk
+          - id: c-sdk-lint
+            target: .#ci_c_sdk_lint
+          - id: c-clang
+            target: .#ci_c_clang
+          - id: c-sanitize
+            target: .#ci_c_sanitize
 
     steps:
       - uses: actions/checkout@v6
